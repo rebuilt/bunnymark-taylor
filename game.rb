@@ -1,0 +1,120 @@
+# Open up a window
+Window.open(width: 800, height: 480, title: "Welcome!")
+
+# Setup audio so we can play sounds
+Audio.open
+
+# Get the current monitor frame rate and set our target framerate to match.
+Window.target_frame_rate = Monitor.current.refresh_rate
+
+# Sprites from https://kenney.nl/assets/pixel-platformer
+$characters = Texture2D.new("./assets/raybunny.png")
+
+# Fonts from https://kenney.nl/assets/kenney-fonts (only kenney_pixel.ttf and kenney_blocks.ttf)
+$pixel_font = Font.new("./assets/kenney_pixel.ttf", size: 32)
+
+class Character
+  def initialize
+    @timer = 0.5
+    @colour = [:green, :blue, :pink, :yellow, :cream].sample
+    @destination = Rectangle.new(
+      x: 388, y: 228,
+      width: 24, height: 24
+    )
+    @direction = Vector2.new(
+      x: 50 - (rand * 100),
+      y: 50 - (rand * 100)
+    )
+
+    default_sprite_position
+  end
+
+  def update(delta)
+    @destination.x += @direction.x * delta
+    @destination.y += @direction.y * delta
+
+    if @destination.x < 0
+      @direction.x = @direction.x.abs
+    elsif @destination.x > 800 - 24
+      @direction.x = -@direction.x.abs
+    end
+
+    if @destination.y < 0
+      @direction.y = @direction.y.abs
+    elsif @destination.y > 480 - 24
+      @direction.y = -@direction.y.abs
+    end
+
+    @timer -= delta
+    toggle_sprite if @timer <= 0
+  end
+
+  def draw
+    $characters.draw(
+      source: @sprite_position,
+      destination: @destination
+    )
+  end
+
+  private
+
+  def toggle_sprite
+    @timer = 0.25 + (rand * 0.5)
+    if @sprite_position.x % 48 == 0
+      @sprite_position.x += 24
+    else
+      @sprite_position.x -= 24
+    end
+  end
+
+  def default_sprite_position
+    x, y = case @colour
+    when :green
+      [0, 0]
+    when :blue
+      [48, 0]
+    when :pink
+      [96, 0]
+    when :yellow
+      [144, 0]
+    when :cream
+      [0, 24]
+    end
+    @sprite_position = Rectangle.new(x: x, y: y, width: 24, height: 24)
+  end
+end
+
+$chars = 1000.times.map { Character.new }
+$text_position = Vector2.new(x: 20, y: 20)
+
+def main
+  delta = Window.frame_time
+
+  if Window.frame_rate > 60
+    50.times { $chars << Character.new }
+  elsif Window.frame_rate < 55
+    5.times { $chars.shift }
+  end
+
+  $chars.each { |char| char.update(delta) }
+
+  Window.draw do
+    Window.clear
+    $chars.each(&:draw)
+    $pixel_font.draw(
+      "FPS: #{Window.frame_rate}\nAliens: #{$chars.size}",
+      position: $text_position
+    )
+  end
+end
+
+if Taylor::Platform.browser?
+  Browser.main_loop = "main"
+else
+  # Detect window close button or ESC key
+  main until Window.close?
+end
+
+Audio.close
+Window.close
+
